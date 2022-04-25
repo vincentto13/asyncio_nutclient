@@ -1,4 +1,4 @@
-from asyncio_nutclient.nutclient import (UpsStatus, NutClient)
+from .nutclient import (UpsStatus, NutClient)
 
 __author__ = 'Pawel Rapkiewicz'
 
