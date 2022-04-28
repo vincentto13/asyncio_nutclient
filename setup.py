@@ -1,11 +1,14 @@
 from setuptools import setup, find_packages
 
+with open("asyncio_nutclient/version.py", "r") as f:
+    exec(f.read())
+
 with open("README.md", "r", encoding="utf-8") as readme_file:
     readme = readme_file.read()
 
 setup(
     name="asyncio_nutclient",
-    version="0.0.3",
+    version=__version__,
     packages=find_packages(),
     package_data={
         "asyncio_nutclient": ["py.typed"],
