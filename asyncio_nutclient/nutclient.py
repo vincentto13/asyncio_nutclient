@@ -21,6 +21,18 @@ class UpsStatus(Enum):
     FSD = "FSD"
 
 
+class NutList(dict):
+    def structured(self):
+        result = {}
+        for key, value in self.items():
+            node = result
+            for item in key.split("."):
+                node.setdefault(item, {})
+                node = node[item]
+            node.setdefault("value", value)
+        return result
+
+
 class NutClient:
     def __init__(self, host, port=3493):
         self.reader = None
@@ -78,22 +90,22 @@ class NutClient:
                 return True
 
     class GenericListCommandHandler(ErrorCommandHandler):
-        def __init__(self, command, item_handler=None):
+        def __init__(self, command):
             self.response = None
             self.command = tuple(command)
-            self.item_handler = item_handler
 
         def parse(self, data):
             self.parse_error(data)
             if data[0] == "BEGIN" and tuple(data[1:]) == self.command:
-                self.response = {}
+                self.response = NutList()
             elif data[0] == "END":
                 if tuple(data[1:]) == self.command:
                     return self.response
-            elif self.item_handler:
+            else:
                 item_signature = self.command[1:]
                 if tuple(data[: len(item_signature)]) == item_signature:
-                    self.item_handler(self.response, data[len(item_signature) :])
+                    item = data[len(item_signature) :]
+                    self.response[item[0]] = item[1]
             return None
 
     class GenericGetCommandHandler(ErrorCommandHandler):
@@ -106,31 +118,15 @@ class NutClient:
             if tuple(data[: len(self.command)]) == self.command:
                 return data[len(self.command) :]
 
-    @staticmethod
-    def response_ups_handler(response, data):
-        response[data[0]] = {"Description": data[1]}
-
-    @staticmethod
-    def response_var_handler(response, data):
-        node = response
-        for item in data[0].split("."):
-            node.setdefault(item, {})
-            node = node[item]
-        node.setdefault("value", data[1])
-
     async def list_ups(self):
         command = ["LIST", "UPS"]
-        response_handler = NutClient.GenericListCommandHandler(
-            command, NutClient.response_ups_handler
-        )
+        response_handler = NutClient.GenericListCommandHandler(command)
         result = await self._execute(command, response_handler)
         return result
 
     async def list_var(self, ups):
         command = ["LIST", "VAR", ups]
-        response_handler = NutClient.GenericListCommandHandler(
-            command, NutClient.response_var_handler
-        )
+        response_handler = NutClient.GenericListCommandHandler(command)
         result = await self._execute(command, response_handler)
         return result
 
